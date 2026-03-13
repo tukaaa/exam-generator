@@ -6,6 +6,22 @@
 - Supports questions with multiple correct answers
 
 A `sample-exam.yaml` file shows how to write a test.
+
+The optional `num-correct` attribute on a `full-question` controls how many correct answers are randomly selected for that question. If omitted, all correct answers are used, capped at `max_answers - 1` to always leave room for at least one wrong answer among the final choices.
+
+```yaml
+- full-question:
+  question: Which of the following are valid TCP states?
+  num-correct: 2
+  answers:
+    correct:
+    - ESTABLISHED
+    - TIME_WAIT
+    - CLOSE_WAIT
+    wrong:
+    - PENDING
+    - HALF_OPEN
+```
 The script uses LaTeX and the exam package as backend, meaning that you'll need a LaTeX distribution installed on your laptop. 
 
 ## man 

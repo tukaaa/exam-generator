@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import yaml 
@@ -13,12 +13,24 @@ def read_yaml(fname):
         content = yaml.safe_load(f.read())
         return content
 
-def make_test_question(question, answers, max_answers, infomap, debug=False):
-    ca = answers['correct']
+def make_test_question(question, answers, max_answers, infomap, num_correct=None, debug=False):
+    ca_all = answers['correct']
     wa = answers['wrong']
     if debug:
+        ca = ca_all
         wa_final = wa
     else:
+        if num_correct is not None:
+            if num_correct > len(ca_all):
+                raise ValueError(
+                    f"num-correct ({num_correct}) exceeds the number of available correct answers ({len(ca_all)}) for question: {question!r}"
+                )
+            if num_correct > max_answers:
+                raise ValueError(
+                    f"num-correct ({num_correct}) exceeds max_answers ({max_answers}) for question: {question!r}"
+                )
+        effective_correct = num_correct if num_correct is not None else min(len(ca_all), max_answers - 1)
+        ca = random.sample(ca_all, effective_correct)
         num_wa = max_answers - len(ca)
         wa_final = random.sample(wa, num_wa)
     catex = list(map(lambda s: "    \CorrectChoice{" + s + "}", ca))
@@ -47,12 +59,12 @@ def make_open_question(openq, debug=False):
     answer = openq['answer']
     tex = [
         "\\filbreak",
-        f"  \question {question}",
-        "\\vspace{0.2cm}",
+        "\qformat{\\textbf{\\thequestiontitle} \dotfill \\vspace{0.5cm}}",
+        "  \\titledquestion{Open Question}{"  + question + "}",
     ]
     if debug:
         tex.append(
-        "    \\noindent\\fbox{\parbox{\\textwidth}{\\textbf{Possible Expected Answer:}\\\\" + answer + "}}"
+        "    \\vspace{0.2cm}\\fbox{\parbox{\\textwidth}{\\textbf{Possible Expected Answer:}\\\\" + answer + "}}"
         )
     else:
         tex.append(
@@ -62,19 +74,19 @@ def make_open_question(openq, debug=False):
 
 def make_questions(yaml, max_answers, debug=False):
     tex = ["\\begin{questions}"]
-    full_questions = []
+    test_questions = []
     open_questions = []
     infomap = {}
     open = 0
     for fullq in filter(lambda q: 'full-question' in q and 'skip' not in q, yaml['questions']):
-          full_questions.append(make_test_question(fullq['question'], fullq['answers'], max_answers, infomap, debug=debug))
+          test_questions.append(make_test_question(fullq['question'], fullq['answers'], max_answers, infomap, num_correct=fullq.get('num-correct'), debug=debug))
     for openq in filter(lambda q: 'open-question' in q and 'skip' not in q, yaml['questions']):
           open_questions.append(make_open_question(openq, debug=debug))
           open += 1
     if not debug:
-        random.shuffle(full_questions)
+        random.shuffle(test_questions)
         random.shuffle(open_questions)
-    for question in full_questions:
+    for question in test_questions:
         tex += question
     tex += ["\\newpage"]
     for question in  open_questions:
